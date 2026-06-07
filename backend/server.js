@@ -15,6 +15,9 @@ app.get("/",(req,res)=>{
     console.log("backend is running")
 })
 
+// Routes
+app.use('/api/auth', require('./routes/auth.routes'))
+
 app.listen(process.env.PORT,()=>{
     console.log(`server is running on port ${PORT}`)
 })
