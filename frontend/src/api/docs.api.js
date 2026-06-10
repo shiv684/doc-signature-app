@@ -14,3 +14,18 @@ export const getDocs = (token) => {
     headers: { Authorization: `Bearer ${token}` }
   })
 }
+
+export const generateSigningLink = (docId, signerEmail, token) => {
+  return axios.post('/docs/generate-link', 
+    { docId, signerEmail },
+    { headers: { Authorization: `Bearer ${token}` } }
+  )
+}
+
+export const getDocByToken = (token) => {
+  return axios.get(`/docs/sign/${token}`)
+}
+
+export const updateDocStatus = (token, status) => {
+  return axios.post('/docs/update-status', { token, status })
+}
