@@ -1,5 +1,6 @@
 const Document = require('../models/Documents.model')
 const crypto = require('crypto')
+const logAudit = require('../utils/audit')
 
 // Upload PDF
 exports.uploadDoc = async (req, res) => {
@@ -19,7 +20,7 @@ exports.uploadDoc = async (req, res) => {
   }
 }
 
-// Get all documents of logged in user
+// Get all documents
 exports.getDocuments = async (req, res) => {
   try {
     const docs = await Document.find({ owner: req.user.id }).sort({ createdAt: -1 })
@@ -34,50 +35,44 @@ exports.generateSigningLink = async (req, res) => {
   try {
     const { docId, signerEmail } = req.body
 
-    // Check document exists
     const doc = await Document.findById(docId)
     if (!doc) return res.status(404).json({ message: 'Document not found' })
 
-    // Check owner
     if (doc.owner.toString() !== req.user.id) {
       return res.status(403).json({ message: 'Not authorized' })
     }
 
-    // Generate unique token
     const token = crypto.randomBytes(32).toString('hex')
-
-    // Token expiry — 7 days
     const expiry = new Date()
     expiry.setDate(expiry.getDate() + 7)
 
-    // Save token in document
     doc.signerEmail = signerEmail
     doc.signingToken = token
     doc.signingTokenExpiry = expiry
     await doc.save()
 
-    const signingLink = `http://localhost:5173/sign-request/${token}`
+    // Audit log
+    await logAudit(docId, 'link_generated', req.user.id, req)
 
-    res.status(200).json({ 
-      message: 'Signing link generated successfully', 
-      signingLink 
-    })
+    const signingLink = `http://localhost:5173/sign-request/${token}`
+    res.status(200).json({ message: 'Signing link generated successfully', signingLink })
   } catch (err) {
     res.status(500).json({ message: 'Internal server error', error: err.message })
   }
 }
 
-// Get document by signing token — public route
+// Get document by signing token
 exports.getDocByToken = async (req, res) => {
   try {
     const doc = await Document.findOne({ signingToken: req.params.token })
-
     if (!doc) return res.status(404).json({ message: 'Invalid or expired link' })
 
-    // Check token expiry
     if (doc.signingTokenExpiry < new Date()) {
       return res.status(400).json({ message: 'Signing link has expired' })
     }
+
+    // Audit log — document viewed
+    await logAudit(doc._id, 'viewed', doc.signerEmail || 'unknown', req)
 
     res.status(200).json(doc)
   } catch (err) {
@@ -97,13 +92,15 @@ exports.updateDocStatus = async (req, res) => {
     const doc = await Document.findOne({ signingToken: token })
     if (!doc) return res.status(404).json({ message: 'Document not found' })
 
-    // Check token expiry
     if (doc.signingTokenExpiry < new Date()) {
       return res.status(400).json({ message: 'Signing link has expired' })
     }
 
     doc.status = status
     await doc.save()
+
+    // Audit log — signed or rejected
+    await logAudit(doc._id, status, doc.signerEmail || 'unknown', req)
 
     res.status(200).json({ message: `Document ${status} successfully`, doc })
   } catch (err) {

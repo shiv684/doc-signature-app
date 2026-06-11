@@ -19,6 +19,7 @@ app.get("/",(req,res)=>{
 app.use('/api/auth', require('./routes/auth.routes'))
 app.use('/api/docs', require('./routes/doc.routes'))
 app.use('/api/signatures', require('./routes/signature.routes'))
+app.use('/api/audit', require('./routes/audit.routes'))
 
 // uploads folder publicly accessible banao
 app.use('/uploads', express.static('uploads'))
