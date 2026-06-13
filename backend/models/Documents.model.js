@@ -12,7 +12,8 @@ const documentSchema = new mongoose.Schema({
   },
   signerEmail: { type: String },
   signingToken: { type: String },
-  signingTokenExpiry: { type: Date }
+  signingTokenExpiry: { type: Date },
+  signedFilename: { type: String }
 }, { timestamps: true })
 
 module.exports = mongoose.model('Document', documentSchema)

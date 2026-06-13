@@ -8,6 +8,11 @@ const DocumentCard = ({ doc }) => {
   const [showSignModal, setShowSignModal] = useState(false)
   const [showAuditModal, setShowAuditModal] = useState(false)
 
+  const handleDownload = () => {
+    const filename = doc.signedFilename || doc.filename
+    window.open(`http://localhost:5000/uploads/${filename}`, '_blank')
+  }
+
   return (
     <>
       <div className="flex justify-between items-center border p-3 rounded">
@@ -37,6 +42,14 @@ const DocumentCard = ({ doc }) => {
           >
             Send for Signing
           </button>
+          {doc.status === 'signed' && (
+            <button
+              onClick={handleDownload}
+              className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600"
+            >
+              Download
+            </button>
+          )}
           <button
             onClick={() => setShowAuditModal(true)}
             className="bg-gray-500 text-white px-3 py-1 rounded text-sm hover:bg-gray-600"

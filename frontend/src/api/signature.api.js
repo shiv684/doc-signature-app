@@ -11,3 +11,7 @@ export const getSignatures = (docId, token) => {
     headers: { Authorization: `Bearer ${token}` }
   })
 }
+
+export const embedSignature = (token, signatureImage) => {
+  return axios.post('/signatures/embed', { token, signatureImage })
+}
