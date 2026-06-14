@@ -8,7 +8,7 @@ const logAudit = require('../utils/audit')
 // Save signature coordinates
 exports.saveSignature = async (req, res) => {
   try {
-    const { documentId, x, y, page, width, height } = req.body
+    const { documentId, x, y, page, width, height, signingToken } = req.body
 
     const doc = await Document.findById(documentId)
     if (!doc) return res.status(404).json({ message: 'Document not found' })
@@ -20,6 +20,7 @@ exports.saveSignature = async (req, res) => {
     const signature = await Signature.create({
       document: documentId,
       owner: req.user.id,
+      signingToken: signingToken || null,
       x, y, page, width, height
     })
 
@@ -40,7 +41,6 @@ exports.getSignatures = async (req, res) => {
 }
 
 // Embed signature image into PDF
-// Embed signature image into PDF
 exports.embedSignature = async (req, res) => {
   try {
     const { token, signatureImage } = req.body
@@ -52,12 +52,17 @@ exports.embedSignature = async (req, res) => {
       return res.status(400).json({ message: 'Signing link has expired' })
     }
 
-    const signatures = await Signature.find({ document: doc._id })
+    // Only get signatures for this token
+    const signatures = await Signature.find({ 
+      document: doc._id,
+      signingToken: token
+    })
 
-    console.log('Signatures found:', signatures.length)
-    console.log('Signatures:', signatures)
+    console.log('Signatures for this token:', signatures.length)
 
-    const pdfPath = path.join(__dirname, '..', 'uploads', doc.filename)
+    // Load existing signed PDF if available — else load original
+    const pdfFilename = doc.signedFilename || doc.filename
+    const pdfPath = path.join(__dirname, '..', 'uploads', pdfFilename)
     const pdfBytes = fs.readFileSync(pdfPath)
     const pdfDoc = await PDFDocument.load(pdfBytes)
 
@@ -81,17 +86,22 @@ exports.embedSignature = async (req, res) => {
       for (const sig of signatures) {
         const pageIndex = (sig.page || 1) - 1
         const page = pages[pageIndex]
-        const { height: pageHeight } = page.getSize()
+        const { width: pageWidth, height: pageHeight } = page.getSize()
 
-        // PDF y starts from bottom, browser y starts from top
-        // Page renders at 700px width in browser
-        const scaleX = page.getWidth() / 700
-        const scaleY = page.getHeight() / (700 * 1.414)
+        // Browser renders PDF at 700px width
+        const browserWidth = 700
+        const browserHeight = browserWidth * (pageHeight / pageWidth)
+
+        // Scale factors
+        const scaleX = pageWidth / browserWidth
+        const scaleY = pageHeight / browserHeight
 
         const pdfX = sig.x * scaleX
         const pdfY = pageHeight - (sig.y * scaleY) - ((sig.height || 60) * scaleY)
 
-        console.log('Embedding at:', { pdfX, pdfY, pageHeight })
+        console.log('Page size:', { pageWidth, pageHeight })
+        console.log('Scale:', { scaleX, scaleY })
+        console.log('Embedding at:', { pdfX, pdfY })
 
         page.drawImage(signatureImageEmbed, {
           x: pdfX,
@@ -102,7 +112,8 @@ exports.embedSignature = async (req, res) => {
       }
     }
 
-    const signedFilename = `signed-${doc.filename}`
+    // Same filename — overwrite signed PDF to keep all signatures
+    const signedFilename = doc.signedFilename || `signed-${doc.filename}`
     const signedPath = path.join(__dirname, '..', 'uploads', signedFilename)
     const signedPdfBytes = await pdfDoc.save()
     fs.writeFileSync(signedPath, signedPdfBytes)

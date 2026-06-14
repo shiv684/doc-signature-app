@@ -118,13 +118,20 @@ useEffect(() => {
   return (
     <div className="min-h-screen bg-gray-100 p-6">
 
-      {/* Header */}
-      <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold">Document Signing Request</h1>
-        <p className="text-gray-500 mt-1">
-          Review the document, draw your signature, then sign or reject
-        </p>
+     {/* Header */}
+<div className="bg-white border-b border-gray-100 shadow-sm mb-6">
+  <div className="max-w-4xl mx-auto px-6 py-4 flex justify-between items-center">
+    <div className="flex items-center gap-3">
+      <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center">
+        <span className="text-white">✍️</span>
       </div>
+      <div>
+        <h1 className="text-lg font-bold text-gray-800">Document Signing Request</h1>
+        <p className="text-xs text-gray-400">Review and sign the document below</p>
+      </div>
+    </div>
+  </div>
+</div>
 
       {/* PDF Viewer */}
       <div className="flex justify-center mb-6">

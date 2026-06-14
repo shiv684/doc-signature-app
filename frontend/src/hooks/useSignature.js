@@ -15,9 +15,9 @@ export const useSignature = (docId) => {
     }
   }
 
-  const handleSave = async (x, y, page) => {
+  const handleSave = async (x, y, page, signingToken) => {
     try {
-      await saveSignature({ documentId: docId, x, y, page }, token)
+      await saveSignature({ documentId: docId, x, y, page, signingToken }, token)
       setSaved(true)
       fetchSignatures()
     } catch (err) {

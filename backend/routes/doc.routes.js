@@ -5,7 +5,8 @@ const {
   getDocuments, 
   generateSigningLink,
   getDocByToken,
-  updateDocStatus
+  updateDocStatus,
+  deleteDoc
 } = require('../controllers/doc.controller')
 const authMiddleware = require('../middleware/auth.middleware')
 const upload = require('../config/multer')
@@ -14,8 +15,9 @@ const upload = require('../config/multer')
 router.post('/upload', authMiddleware, upload.single('pdf'), uploadDoc)
 router.get('/', authMiddleware, getDocuments)
 router.post('/generate-link', authMiddleware, generateSigningLink)
+router.delete('/:id', authMiddleware, deleteDoc)
 
-// Public routes — no auth needed
+// Public routes
 router.get('/sign/:token', getDocByToken)
 router.post('/update-status', updateDocStatus)
 

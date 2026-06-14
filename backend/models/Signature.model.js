@@ -11,6 +11,7 @@ const signatureSchema = new mongoose.Schema({
     ref: 'User', 
     required: true 
   },
+  signingToken: { type: String },
   x: { type: Number, required: true },
   y: { type: Number, required: true },
   page: { type: Number, default: 1 },

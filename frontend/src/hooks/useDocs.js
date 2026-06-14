@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getDocs, uploadDoc } from '../api/docs.api'
+import { getDocs, uploadDoc, deleteDoc } from '../api/docs.api'
 
 export const useDocs = () => {
   const [docs, setDocs] = useState([])
@@ -32,9 +32,21 @@ export const useDocs = () => {
     }
   }
 
+  const handleDelete = async (docId) => {
+    if (!window.confirm('Are you sure you want to delete this document?')) return
+
+    try {
+      await deleteDoc(docId, token)
+      setMessage('Document deleted successfully')
+      fetchDocs()
+    } catch (err) {
+      setMessage('Delete failed, please try again')
+    }
+  }
+
   useEffect(() => {
     fetchDocs()
   }, [])
 
-  return { docs, file, setFile, message, handleUpload }
+  return { docs, file, setFile, message, handleUpload, handleDelete }
 }

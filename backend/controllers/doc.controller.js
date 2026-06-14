@@ -1,5 +1,8 @@
 const Document = require('../models/Documents.model')
+const Signature = require('../models/Signature.model')
 const crypto = require('crypto')
+const fs = require('fs')
+const path = require('path')
 const logAudit = require('../utils/audit')
 
 // Upload PDF
@@ -103,6 +106,38 @@ exports.updateDocStatus = async (req, res) => {
     await logAudit(doc._id, status, doc.signerEmail || 'unknown', req)
 
     res.status(200).json({ message: `Document ${status} successfully`, doc })
+  } catch (err) {
+    res.status(500).json({ message: 'Internal server error', error: err.message })
+  }
+}
+
+// Delete document
+exports.deleteDoc = async (req, res) => {
+  try {
+    const doc = await Document.findById(req.params.id)
+    if (!doc) return res.status(404).json({ message: 'Document not found' })
+
+    if (doc.owner.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' })
+    }
+
+    // Delete original file
+    const filePath = path.join(__dirname, '..', 'uploads', doc.filename)
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath)
+
+    // Delete signed file if exists
+    if (doc.signedFilename) {
+      const signedPath = path.join(__dirname, '..', 'uploads', doc.signedFilename)
+      if (fs.existsSync(signedPath)) fs.unlinkSync(signedPath)
+    }
+
+    // Delete signatures from DB
+    await Signature.deleteMany({ document: doc._id })
+
+    // Delete document from DB
+    await Document.findByIdAndDelete(req.params.id)
+
+    res.status(200).json({ message: 'Document deleted successfully' })
   } catch (err) {
     res.status(500).json({ message: 'Internal server error', error: err.message })
   }

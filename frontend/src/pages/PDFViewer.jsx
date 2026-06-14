@@ -12,12 +12,14 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
   import.meta.url,
 ).toString()
+
 const PDFViewer = () => {
   const { docId, filename } = useParams()
   const navigate = useNavigate()
   const [numPages, setNumPages] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [signaturePos, setSignaturePos] = useState({ x: 100, y: 100 })
+  const [signingToken, setSigningToken] = useState('')
   const containerRef = useRef(null)
   const { saved, handleSave } = useSignature(docId)
 
@@ -34,27 +36,51 @@ const PDFViewer = () => {
   }
 
   const handleSaveClick = () => {
-    handleSave(signaturePos.x, signaturePos.y, currentPage)
+    if (!signingToken.trim()) {
+      return alert('Please enter signing token first')
+    }
+    handleSave(signaturePos.x, signaturePos.y, currentPage, signingToken.trim())
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div className="min-h-screen bg-gray-50">
 
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-        >
-          ← Back
-        </button>
-        <h1 className="text-xl font-bold">Place Signature</h1>
-        <button
-          onClick={handleSaveClick}
-          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-        >
-          {saved ? '✅ Saved!' : 'Save Position'}
-        </button>
+      <div className="bg-white border-b border-gray-100 shadow-sm mb-6">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="text-gray-500 hover:text-gray-700 font-medium text-sm"
+          >
+            ← Back
+          </button>
+          <h1 className="text-lg font-bold text-gray-800">Place Signature</h1>
+          <button
+            onClick={handleSaveClick}
+            className="bg-green-500 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-green-600 transition"
+          >
+            {saved ? '✅ Saved!' : 'Save Position'}
+          </button>
+        </div>
+      </div>
+
+      {/* Signing Token Input */}
+      <div className="max-w-5xl mx-auto px-6 mb-4">
+        <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Enter Signing Token (from signing link)
+          </label>
+          <input
+            type="text"
+            placeholder="Paste signing token here..."
+            value={signingToken}
+            onChange={(e) => setSigningToken(e.target.value)}
+            className="w-full border border-gray-200 p-3 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <p className="text-xs text-gray-400 mt-1">
+            Generate signing link first, then paste the token here to link signature position
+          </p>
+        </div>
       </div>
 
       {/* Page Controls */}
@@ -62,7 +88,7 @@ const PDFViewer = () => {
         <button
           onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
           disabled={currentPage === 1}
-          className="bg-white border px-3 py-1 rounded disabled:opacity-40"
+          className="bg-white border px-3 py-1 rounded-lg disabled:opacity-40 text-sm"
         >
           Prev
         </button>
@@ -72,7 +98,7 @@ const PDFViewer = () => {
         <button
           onClick={() => setCurrentPage((p) => Math.min(p + 1, numPages))}
           disabled={currentPage === numPages}
-          className="bg-white border px-3 py-1 rounded disabled:opacity-40"
+          className="bg-white border px-3 py-1 rounded-lg disabled:opacity-40 text-sm"
         >
           Next
         </button>
@@ -101,7 +127,6 @@ const PDFViewer = () => {
           </div>
         </DndContext>
       </div>
-
     </div>
   )
 }

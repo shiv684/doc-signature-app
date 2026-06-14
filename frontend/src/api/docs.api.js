@@ -29,3 +29,8 @@ export const getDocByToken = (token) => {
 export const updateDocStatus = (token, status) => {
   return axios.post('/docs/update-status', { token, status })
 }
+export const deleteDoc = (docId, token) => {
+  return axios.delete(`/docs/${docId}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+}
