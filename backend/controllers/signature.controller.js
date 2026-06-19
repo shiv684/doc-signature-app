@@ -83,33 +83,25 @@ exports.embedSignature = async (req, res) => {
         height: 60
       })
     } else {
-      for (const sig of signatures) {
-        const pageIndex = (sig.page || 1) - 1
-        const page = pages[pageIndex]
-        const { width: pageWidth, height: pageHeight } = page.getSize()
+     for (const sig of signatures) {
+  const pageIndex = (sig.page || 1) - 1
+  const page = pages[pageIndex]
+  const { width: pageWidth, height: pageHeight } = page.getSize()
 
-        // Browser renders PDF at 700px width
-        const browserWidth = 700
-        const browserHeight = browserWidth * (pageHeight / pageWidth)
+  // Direct ratio — no complex scaling
+  const scaleX = pageWidth / 700
+  const scaleY = scaleX  // same scale for both axes
 
-        // Scale factors
-        const scaleX = pageWidth / browserWidth
-        const scaleY = pageHeight / browserHeight
+  const pdfX = sig.x * scaleX
+  const pdfY = pageHeight - (sig.y * scaleX) - (60 * scaleX)
 
-        const pdfX = sig.x * scaleX
-        const pdfY = pageHeight - (sig.y * scaleY) - ((sig.height || 60) * scaleY)
-
-        console.log('Page size:', { pageWidth, pageHeight })
-        console.log('Scale:', { scaleX, scaleY })
-        console.log('Embedding at:', { pdfX, pdfY })
-
-        page.drawImage(signatureImageEmbed, {
-          x: pdfX,
-          y: pdfY,
-          width: (sig.width || 200) * scaleX,
-          height: (sig.height || 60) * scaleY
-        })
-      }
+  page.drawImage(signatureImageEmbed, {
+    x: Math.max(0, pdfX),
+    y: Math.max(0, pdfY),
+    width: 150 * scaleX,
+    height: 50 * scaleX
+  })
+}
     }
 
     // Same filename — overwrite signed PDF to keep all signatures

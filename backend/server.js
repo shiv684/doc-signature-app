@@ -6,7 +6,13 @@ const connectedDB=require("./config/db")
 dotenv.config()
 connectedDB()
 const app=express();
-app.use(cors())
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'https://doc-signature-app-kappa.vercel.app'
+  ],
+  credentials: true
+}))
 app.use(express.json())
 
 const PORT=5000;

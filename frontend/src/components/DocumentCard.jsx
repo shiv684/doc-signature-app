@@ -14,10 +14,13 @@ const DocumentCard = ({ doc, onDelete }) => {
   const [showSignModal, setShowSignModal] = useState(false)
   const [showAuditModal, setShowAuditModal] = useState(false)
 
-  const handleDownload = () => {
-    const filename = doc.signedFilename || doc.filename
-    window.open(`http://localhost:5000/uploads/${filename}`, '_blank')
-  }
+ const handleDownload = () => {
+  const filename = doc.signedFilename || doc.filename
+  window.open(
+    `${import.meta.env.VITE_API_URL?.replace('/api', '')}/uploads/${filename}`,
+    '_blank'
+  )
+}
 
   const config = statusConfig[doc.status] || statusConfig.pending
 

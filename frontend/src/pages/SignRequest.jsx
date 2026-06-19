@@ -13,6 +13,8 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url,
 ).toString()
 
+const BASE_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'
+
 const SignRequest = () => {
   const { token } = useParams()
   const [doc, setDoc] = useState(null)
@@ -22,55 +24,57 @@ const SignRequest = () => {
   const [numPages, setNumPages] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [pageLoading, setPageLoading] = useState(true)
   const sigCanvas = useRef(null)
   const signaturePad = useRef(null)
-useEffect(() => {
-  console.log('Token from URL:', token)
-  const fetchDoc = async () => {
-    try {
-      const res = await getDocByToken(token)
-      console.log('Doc fetched:', res.data)
-      setDoc(res.data)
-    } catch (err) {
-      console.error('Fetch error:', err.response?.data || err.message)
-      setFetchError('Invalid or expired signing link')
-    }
-  }
-  fetchDoc()
-}, [token])
 
-useEffect(() => {
-  if (doc && sigCanvas.current) {
-    signaturePad.current = new SignaturePad(sigCanvas.current)
-  }
-}, [doc])
+  useEffect(() => {
+    const fetchDoc = async () => {
+      try {
+        const res = await getDocByToken(token)
+        setDoc(res.data)
+      } catch (err) {
+        setFetchError('Invalid or expired signing link')
+      } finally {
+        setPageLoading(false)
+      }
+    }
+    fetchDoc()
+  }, [token])
+
+  useEffect(() => {
+    if (doc && sigCanvas.current) {
+      signaturePad.current = new SignaturePad(sigCanvas.current, {
+        backgroundColor: 'rgb(255, 255, 255)',
+        penColor: 'rgb(0, 0, 0)'
+      })
+    }
+  }, [doc])
 
   const handleSign = async () => {
-  if (!signaturePad.current || signaturePad.current.isEmpty()) {
-    return alert('Please draw your signature first')
+    if (!signaturePad.current || signaturePad.current.isEmpty()) {
+      return alert('Please draw your signature first')
+    }
+
+    try {
+      setLoading(true)
+      setSignError('')
+
+      const signatureImage = signaturePad.current.toDataURL('image/png')
+      const res = await embedSignature(token, signatureImage)
+      console.log('Success:', res.data)
+      setStatus('signed')
+    } catch (err) {
+      console.error('Sign error:', err.response?.data || err.message)
+      setSignError(err.response?.data?.message || 'Signing failed, please try again')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  try {
-    setLoading(true)
-    setSignError('')
-
-    const signatureImage = signaturePad.current.toDataURL('image/png')
-
-    console.log('Signing with token:', token)
-    const res = await embedSignature(token, signatureImage)
-    console.log('Success:', res.data)
-
-    setStatus('signed')
-  } catch (err) {
-    console.error('Sign error:', err.response?.data || err.message)
-    setSignError(err.response?.data?.message || 'Signing failed, please try again')
-  } finally {
-    setLoading(false)
-  }
-}
   const handleReject = async () => {
     try {
-      await fetch('http://localhost:5000/api/docs/update-status', {
+      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/docs/update-status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, status: 'rejected' })
@@ -81,7 +85,6 @@ useEffect(() => {
     }
   }
 
-  // Only show fetch error — not sign error
   if (fetchError) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -107,7 +110,7 @@ useEffect(() => {
     )
   }
 
-  if (!doc) {
+  if (pageLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-gray-500">Loading document...</p>
@@ -115,29 +118,37 @@ useEffect(() => {
     )
   }
 
+  if (!doc) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-500">Document not found</p>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 p-6">
 
-     {/* Header */}
-<div className="bg-white border-b border-gray-100 shadow-sm mb-6">
-  <div className="max-w-4xl mx-auto px-6 py-4 flex justify-between items-center">
-    <div className="flex items-center gap-3">
-      <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center">
-        <span className="text-white">✍️</span>
+      {/* Header */}
+      <div className="bg-white border-b border-gray-100 shadow-sm mb-6">
+        <div className="max-w-4xl mx-auto px-6 py-4 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center">
+              <span className="text-white">✍️</span>
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-gray-800">Document Signing Request</h1>
+              <p className="text-xs text-gray-400">Review and sign the document below</p>
+            </div>
+          </div>
+        </div>
       </div>
-      <div>
-        <h1 className="text-lg font-bold text-gray-800">Document Signing Request</h1>
-        <p className="text-xs text-gray-400">Review and sign the document below</p>
-      </div>
-    </div>
-  </div>
-</div>
 
       {/* PDF Viewer */}
       <div className="flex justify-center mb-6">
         <div className="shadow-lg">
           <Document
-            file={`http://localhost:5000/uploads/${doc.filename}`}
+            file={`${BASE_URL}/uploads/${doc.filename}`}
             onLoadSuccess={({ numPages }) => setNumPages(numPages)}
           >
             <Page pageNumber={currentPage} width={700} />
@@ -166,30 +177,29 @@ useEffect(() => {
         </button>
       </div>
 
-{/* Signature Canvas */}
-<div className="flex justify-center mb-6">
-  <div className="bg-white p-4 rounded shadow">
-    <p className="text-sm text-gray-500 mb-2 text-center">
-      Draw your signature below:
-    </p>
-    <canvas
-      ref={sigCanvas}
-      width={500}
-      height={150}
-      className="border border-gray-300 rounded"
-    />
-    <div className="flex justify-end mt-2">
-      <button
-        onClick={() => signaturePad.current?.clear()}
-        className="text-sm text-gray-400 hover:text-gray-600"
-      >
-        Clear
-      </button>
-    </div>
-  </div>
-</div>
+      {/* Signature Canvas */}
+      <div className="flex justify-center mb-6">
+        <div className="bg-white p-4 rounded shadow">
+          <p className="text-sm text-gray-500 mb-2 text-center">
+            Draw your signature below:
+          </p>
+          <canvas
+            ref={sigCanvas}
+            width={500}
+            height={150}
+            className="border border-gray-300 rounded cursor-crosshair"
+          />
+          <div className="flex justify-end mt-2">
+            <button
+              onClick={() => signaturePad.current?.clear()}
+              className="text-sm text-gray-400 hover:text-gray-600"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      </div>
 
-      {/* Sign error */}
       {signError && (
         <p className="text-center text-red-500 mb-4">{signError}</p>
       )}
